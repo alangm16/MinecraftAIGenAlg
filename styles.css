@@ -1,0 +1,28 @@
+body {
+    font-family: Arial, sans-serif;
+  }
+  
+  #grid {
+    display: grid;
+    grid-template-columns: repeat(10, 50px);
+    grid-template-rows: repeat(10, 50px);
+    gap: 1px;
+  }
+  
+  .cell {
+    width: 50px;
+    height: 50px;
+  }
+  
+  .white {
+    background-color: white;
+  }
+  
+  .black {
+    background-color: black;
+  }
+  
+  .character {
+    background-color: red;
+  }
+  

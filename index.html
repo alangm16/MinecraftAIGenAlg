@@ -1,0 +1,753 @@
+<!----
+#------------------------------------------------------------------------------------------
+#                         TECNOLOGICO NACIONAL DE MEXICO
+#                                CAMPUS LA LAGUNA
+#                     INGENIERIA EN SISTEMAS COMPUTACIONALES
+#                             INTELIGENCIA ARTIFICIAL
+#
+#                   SEMESTRE: ENE-JUN/2024    HORA: 11 - 12 HRS
+#
+#                         Agente Inteligente utilizando A*
+#
+#  Archivo     : index.html
+#  Autores     : Alan Yahir Japhet Gómez Mireles 
+#  Fecha       : 18/Mar/2024
+#  Descripción : En el presente archivo se presenta la codificación de un
+#                agente inteligente de búsqueda con un objetivo por
+#                medio de la implementación del algoritmo A*.
+#
+#------------------------------------------------------------------------------------------
+-->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Juego con IA</title>
+    <!--Carga de fuentes de google fonts-->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+    <style>
+        /*Estilos para la imagen de fondo de la pagina, centrarla y ajustarla*/
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-image: url(img/wp2652303-wallpaper-minecraft-hd.jpg);
+            background-repeat: no-repeat;
+            background-position: center center;
+            background-size: cover;
+            background-attachment: fixed;
+            background-color: #ffffff;
+            background-blend-mode: multiply;
+        }
+
+        #game-container {
+            display: flex;
+            /* Cambio a flex para alinear el tablero y el contenedor info */
+            justify-content: flex-end;
+            /* Alineación a la derecha */
+            align-items: flex-start;
+            /* Alineación arriba */
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(15, 40px);
+            grid-template-rows: repeat(15, 40px);
+            border: 3px solid black;
+        }
+        /*Estilar el tamaño de la celda y las imagenes de cada respectiva clase*/
+        .cell {
+            width: 40px;
+            height: 40px;
+            background-size: cover;
+            background-position: center;
+            border: 1px solid black;
+            background-image: url("img/pasto.jpg");
+        }
+
+        .block {
+            background-image: url('img/lava.jpg');
+        }
+
+        .sand {
+        background-image: url("img/arena.jpg");
+        }
+
+        .stone {
+        background-image: url("img/piedra.png");
+        }
+
+        .water {
+            background-image: url("img/agua.jpeg");
+        }
+
+
+        .player {
+            background-image: url('img/player.png');
+            z-index: 101; /* Asegura que el agente (zombie) esté sobre las nuevas texturas */
+            position: relative; /* Asegura que el posicionamiento sea relativo */
+        }
+
+        .zombie {
+            background-image: url('img/player.png');
+            z-index: 101;
+            /* Asegurarse de que el zombie esté sobre las telarañas */
+            position: relative;
+        }
+
+        .goal {
+            background-image: url('img/aldeano.png');
+        }
+
+        .recharge {
+            background-image: url("img/recarga.png")
+        }
+
+        .web {
+            background-image: url('img/telaraña.png');
+        }
+        /*Estilar tamaños de los titulos*/
+        #counter {
+            /* numero del nivel*/
+            font-size: 40px;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        #step-counter {
+            /*contador de paso*/
+            font-size: 30px;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        #titulo,
+        #counter,
+        #step-counter {
+            margin-bottom: 10px;
+        }
+
+        #reset-btn {
+            /*boton de reseteo*/
+            font-size: 20px;
+            transform: translate(-58%, -50%);
+        }
+
+        .wrapper {
+            margin-left: 300px;
+            padding-top: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            left: 50%;
+            top: 50%;
+        }
+
+        a {
+            display: block;
+            width: 250px;
+            height: 50px;
+            line-height: 46px;
+            text-decoration: none;
+            text-align: center;
+            border-radius: 50px;
+            border: 3px solid rgb(255, 255, 255);
+            color: rgb(255, 255, 255);
+            font-size: 20px;
+            font-family: arial;
+            position: relative;
+            overflow: hidden;
+            background: transparent;
+            text-transform: uppercase;
+            transition: all .35s;
+        }
+
+        a:before,
+        a:after {
+            position: absolute;
+            content: "";
+            width: 100%;
+            height: 100%;
+            top: -100%;
+            left: 0;
+            background: rgb(37, 202, 16);
+            z-index: -1;
+            transition: all .35s;
+        }
+
+        a:before {
+            opacity: .5;
+        }
+
+        a:after {
+            transition-delay: .2s;
+        }
+
+        a:hover {
+            color: #fff;
+        }
+
+        a:hover:before,
+        a:hover:after {
+            top: 0;
+        }
+
+        /* Contenedor para el contador de pasos, botón de reinicio, etiquetas de estado y nivel */
+        #info-container {
+            border: 2px solid black;
+            border-radius: 20px;
+            padding: 10px;
+            background-color: #f9f9f9;
+            position: relative;
+            height: 610px;
+            width: 300px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            align-items: center;
+            justify-content: space-between;
+            margin-right: 50px;
+        }
+
+        #info-container {
+
+            background: rgba(0, 0, 0, 0.19);
+            border-radius: 16px;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(8.6px);
+            -webkit-backdrop-filter: blur(8.6px);
+            border: 1px solid rgba(0, 0, 0, 0.12);
+        }
+
+        #player-state,
+        #estado,
+        #titulo {
+            font-size: 35px;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        #player-state,
+        #estado,
+        #titulo,
+        #counter,
+        #step-counter {
+
+            font-family: "VT323";
+            font-weight: 400;
+            font-size: 45px;
+        }
+
+        #titulo {
+            color: gray;
+            font-size: 60px;
+            font-weight: 500;
+        }
+        .title{
+            position: absolute;
+            top: -10%;
+            right: 24%;
+        }
+        #titulo-principal{
+            font-size: 100PX;
+            font-family: "VT323";
+            text-align: center;
+            -webkit-text-fill-color: rgb(215, 215, 219); 
+            -webkit-text-stroke: 1px black;
+            font-weight: 900;
+            letter-spacing: -4px;
+        }
+
+    </style>
+</head>
+
+<body>
+    <div class="title">
+        <h1 id="titulo-principal">Minecraft IA</h1> 
+    </div>
+    <div id="game-container">
+        <div id="info-container">
+            <div id="titulo">Juego con IA</div>
+            <div id="counter">Nivel: <span id="level">1</span></div>
+            <div id="step-counter">Pasos restantes: <span id="steps">15</span></div>
+            <div id="estado">Estado: <span id="player-state">Suelo</span></div>
+            <div id="game-over" style="display: none; font-size: 36px; font-weight: bold; color: red;">Game Over</div>
+            <!-- Mensaje de Game Over oculto por defecto -->
+            <div class="wrapper" id="reset-btn">
+                <a href="#">Reiniciar Nivel</a>
+            </div>
+        </div>
+        <div id="game-container"> <!-- Se eliminaron los estilos de este div, ya que se agregarán en el CSS -->
+            <div class="grid" id="grid"></div>
+        </div>
+    </div>
+    <script>
+        // Clase Nodo para el algoritmo A*
+        class Node {
+            constructor(fila, columna, g = 0, h = 0, padre = null) {
+                this.fila = fila;
+                this.columna = columna;
+                this.g = g; // Costo acumulado del nodo inicial a este nodo
+                this.h = h; // Heurística, estimación del costo desde este nodo hasta el objetivo
+                this.padre = padre; // Nodo padre en el camino óptimo
+            }
+
+            get f() {
+                return this.g + this.h; // Costo total: costo acumulado + heurística
+            }
+        }
+        // Extraemos los elementos por su ID para modficarlos mas adelante 
+        const grid = document.getElementById('grid');
+        const counter = document.getElementById('level');
+        const stepCounter = document.getElementById('steps'); // Seleccionar el contador de pasos
+        const resetBtn = document.getElementById('reset-btn');
+        const gameOverMessage = document.getElementById('game-over');
+        const playerState = document.getElementById('player-state'); // Nuevo elemento para mostrar el estado del jugador
+        // Numero de comulnas y filas del laberinto y variables como el index del jugador, 
+        //de la meta, el nivel, el numero de pasos que inicia en 15, los bloques y los puntos de recarga
+        const rows = 15;
+        const cols = 15;
+        let blocks = [];
+        let rechargePoints = [];
+        let playerIndex;
+        let goalIndex;
+        let level = 1;
+        let stepsRemaining = 15; // Inicializar el contador de pasos
+        // Funcion para crear con el grid visualmente el laberinto y agregarselo al elemento previamente extraido
+        function createGrid() {
+            for (let i = 0; i < rows; i++) {
+                for (let j = 0; j < cols; j++) {
+                    const cell = document.createElement('div');
+                    cell.classList.add('cell');
+                    grid.appendChild(cell);
+                }
+            }
+        }
+        createGrid();   // Ejecutamos la funcion para que cree el grid
+
+        function updatePlayerState() {  
+            // Funcion para actualizar el estado del jugador y mostrarlo visualmente 
+            //dependiendo de si el indice del player esta en una casilla del grid con uno u otro estado
+            const playerRow = Math.floor(playerIndex / cols);
+            const playerCol = playerIndex % cols;
+
+            if (playerIndex === goalIndex) {
+                playerState.textContent = 'Meta';
+            } else if (grid.children[playerIndex].classList.contains('recharge')) {
+                playerState.textContent = 'Recarga';
+            } else if (grid.children[playerIndex].classList.contains('web')) {
+                playerState.textContent = 'Atascado';
+            } else {
+                playerState.textContent = 'Suelo (buscando)';
+            }
+        }
+        // Funcion para generar los bloques, con numeros aleatorios, en filas y columnas aleatorias
+        function generateBlocks() {
+            blocks = [];
+            while (blocks.length < (rows * cols) / 4) {
+                const row = Math.floor(Math.random() * rows);
+                const col = Math.floor(Math.random() * cols);
+                if (row !== 0 || col !== 0) { 
+                    const index = row * cols + col;
+                    if (!blocks.includes(index)) { // if para que no se generen los bloques repetidos en un lugar en donde ya estan
+                        blocks.push(index);
+                        const cell = grid.children[index];
+                        cell.classList.add('block', 'cell');
+                    }
+                }
+            }
+        }
+        // Funcion para que se genere el lugar donde aparece el player mientras el indice aleatorio generado no sea en donde se 
+        //encuentre un bloque
+        /*function generatePlayer() {
+            do {
+                playerIndex = Math.floor(Math.random() * (rows * cols));
+            } while (blocks.includes(playerIndex));
+
+            let player = grid.children[playerIndex];
+            player.classList.add('player', 'cell');
+        }
+        // Funcion para que se genere la meta y no colisione con otros elementos
+        function generateGoal() {
+            do {
+                goalIndex = Math.floor(Math.random() * (rows * cols));
+            } while (blocks.includes(goalIndex) || goalIndex === playerIndex || grid.children[goalIndex].classList.contains('web') || grid.children[goalIndex].classList.contains('recharge')); // Asegurarse de que el aldeano no esté en una telaraña
+
+            const goal = grid.children[goalIndex];
+            goal.classList.add('goal', 'cell');
+        }*/
+        // Generar el agente (zombie) en una posición aleatoria que no sea un bloque
+        function generatePlayer() {
+            do {
+            playerIndex = Math.floor(Math.random() * (rows * cols));
+            } while (blocks.includes(playerIndex));
+
+            let playerCell = grid.children[playerIndex];
+            playerCell.classList.add('player'); // Asignar la clase 'player' al agente
+        }
+
+        // Generar el objetivo (aldeano) en una posición aleatoria que no sea un bloque ni la posición del agente
+        function generateGoal() {
+        do {
+        goalIndex = Math.floor(Math.random() * (rows * cols));
+        } while (blocks.includes(goalIndex) || goalIndex === playerIndex);
+
+        let goalCell = grid.children[goalIndex];
+        goalCell.classList.add('goal'); // Asignar la clase 'goal' al objetivo
+        }
+
+        // Funcion para generar los puntos de recarga(pociones de salud) y tampoco colisiona con otros elementos
+        function generateRechargePoints() {
+            rechargePoints = [];
+            while (rechargePoints.length < 5) { // Se generan 5
+                const row = Math.floor(Math.random() * rows);
+                const col = Math.floor(Math.random() * cols);
+                const index = row * cols + col;
+                if (!blocks.includes(index) && !rechargePoints.some(point => point[0] === row && point[1] === col)) {
+                    rechargePoints.push([row, col]); // Metemos la fila y columna del punto de recarga al arreglo declarado al 
+                    //principio para utilzarlo posteriormente
+                    const cell = grid.children[index];
+                    cell.classList.add('recharge', 'cell');
+                }
+            }
+        }
+        // Funciona para generar otro tipo de bloques (telarañas) igualmente de forma aleatoria y sin que colisione con otros elementos
+        function generateWeb() {
+            for (let i = 0; i < (rows * cols) / 16; i++) {
+                let row, col, index;
+                do {
+                    row = Math.floor(Math.random() * rows);
+                    col = Math.floor(Math.random() * cols);
+                    index = row * cols + col;
+                } while (blocks.includes(index) || index === playerIndex || index === goalIndex);
+
+                const cell = grid.children[index];
+                cell.classList.add('web', 'cell');
+            }
+        }
+        // Funcion para mover al jugador
+        function movePlayer() {
+            if (stepsRemaining <= 0) { // Si se queda sin pasos( lo que vendria a ser la bateria ) limpiar/detener el intervalo de tiempo, 
+                //poner mensaje de game over y retornar la funcion para no seguir con procesos inecesarios
+                clearInterval(moveInterval);
+                gameOverMessage.style.display = 'block';
+                return;
+            }
+            // Verificar si el jugador está pasando por una telaraña extrallendo la celda en la que esta y comparandolo por las celdas
+            const playerCell = grid.children[playerIndex];
+            if (playerCell.classList.contains('web')) {
+                stepsRemaining--; // Reducir el contador de pasos
+                stepCounter.textContent = stepsRemaining; // Actualizar el contador de pasos en la interfaz
+                playerCell.classList.remove('web'); // Quitar la telaraña del camino
+            }
+            // Sacar la posicion del jugador
+            const playerRow = Math.floor(playerIndex / cols);
+            const playerCol = playerIndex % cols;
+
+            // Crear nodos de la meta y el jugador, y listas con los nodos explorados y no explorados(openSet y closedSet)
+            const startNode = new Node(playerRow, playerCol);
+            const goalNode = new Node(Math.floor(goalIndex / cols), goalIndex % cols);
+            const openSet = [startNode];
+            const closedSet = [];
+
+            // Implementacion del algoritmo A*
+            while (openSet.length > 0) { // Si aun hay nodos posibles a explorar para llegar al camino continua el algoritmo si no termina
+                let currentNode = openSet[0];
+                for (let i = 1; i < openSet.length; i++) {
+                    // Se compora cual camino a elegir de los nodoss posibles a elegir del arreglo de openSet por medio de los atributos 
+                    //de nuestro nodo, como lo son f y h que seria h la Heuristica y f el costo total y en base a cuales son los menores costos se elegi el nuevo nodo
+                    if (openSet[i].f < currentNode.f || (openSet[i].f === currentNode.f && openSet[i].h < currentNode.h)) {
+                        currentNode = openSet[i];
+                    }
+                }
+
+                // Se quita el nodo elegido del arreglo de los no explorados y se agrega a los ya explorados (closedSet)
+                const currentIndex = openSet.indexOf(currentNode);
+                openSet.splice(currentIndex, 1);
+                closedSet.push(currentNode);
+
+                // Se comprueba si el nodo actual es la meta, en caso de que si se reconstruye el camino desde el nodo inicial hasta 
+                //la meta y se mueve al jugador a la siguiente posición en ese camino
+                if (currentNode.fila === goalNode.fila && currentNode.columna === goalNode.columna) {
+                    let path = [];
+                    let temp = currentNode;
+                    // Se crea el camino correcto
+                    while (temp) {
+                        path.push([temp.fila, temp.columna]);
+                        temp = temp.padre; // Se cambia la variable temporal con el Nodo padre para seguir crando el camino conforme 
+                        //el nodo que viene desde arriba hasta llegar al inicio
+                    }
+                    path = path.reverse(); // Se invierte el camino para que este desde el inicio hasta la meta
+
+                    const nextStep = path[1]; // Se saca el siguiente paso al que se movera el jugdor segun el path crado en base a 
+                    //los nodos padres
+                    // Se actualiza visualmente la posicion del player al siguiente paso
+                    const nextIndex = nextStep[0] * cols + nextStep[1];
+                    const player = grid.querySelector('.player');
+                    player.classList.remove('player');
+                    playerIndex = nextIndex;
+                    const newPlayer = grid.children[playerIndex];
+                    newPlayer.classList.add('player');
+
+                    // Una vez llegado al indice se da como ganador y se reinicia a un nuevo nivel
+                    if (playerIndex === goalIndex) {
+                        resetGame();
+                        level++;
+                        counter.textContent = level;
+                        stepsRemaining = 15;
+                        stepCounter.textContent = stepsRemaining;
+                    }
+
+                    // Se resta y actualiza los pasos cada vez que se mueve el jugador
+                    stepsRemaining--;
+                    stepCounter.textContent = stepsRemaining;
+
+                    updatePlayerState(); // Actualizar el estado del jugador
+                    return;
+                }
+
+                // Si el nodo actual no es la meta, se extraen los vecinos
+                const neighbors = [
+                    [currentNode.fila - 1, currentNode.columna],
+                    [currentNode.fila + 1, currentNode.columna],
+                    [currentNode.fila, currentNode.columna - 1],
+                    [currentNode.fila, currentNode.columna + 1]
+                ];
+
+                // Ciclo para explorar todos los vecinos
+                for (let i = 0; i < neighbors.length; i++) {
+                    const [row, col] = neighbors[i]; // Destructuracion del vecino actual en el ciclo
+                    // if para comprobar si el vecino no esta fuera del limite del grid y no incluye bloques (lava) en donde el movimiento 
+                    //no es posible
+                    if (row >= 0 && col >= 0 && row < rows && col < cols && !blocks.includes(row * cols + col)) {
+                        // Se crea un nuevo nodo para el vecino actual, con su fila, columna, costo y heuristica
+                        // La heuristica se saca por medio de la funcion manhatan, la cual es la distancia entre los puntos del nodo 
+                        //actual y la meta
+                        const newNode = new Node(row, col, currentNode.g + 1, Math.abs(row - goalNode.fila) + Math.abs(col - goalNode.columna), 
+                        currentNode);
+                        // Se verifica que el nodo no este en closedSet que significaria que ya lo exploramos
+                        if (!closedSet.some(node => node.fila === row && node.columna === col)) {
+                            // Se verifica que no este en el openSet por lo que signifacria que no es un vecino de otro nodo y es 
+                            //nuevo por lo que lo agregamos
+                            if (!openSet.some(node => node.fila === row && node.columna === col)) {
+                                openSet.push(newNode);
+                                // Mostramos en consola los costos del nodo vecino explorado en la fila, columna, el costo, la heurisitica 
+                                //y el costo total( costo actual + acumulado )
+                                console.log(`Agregado a openSet: fila ${row}, columna ${col}, g: ${newNode.g}, h: ${newNode.h}, 
+                                f: ${newNode.f}`);
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Actualizar visualmente la posición del jugador (zombie)
+            const currentPlayerCell = grid.querySelector('.player');
+            if (currentPlayerCell) {
+            currentPlayerCell.classList.remove('player');
+            }
+            const newPlayerCell = grid.children[playerIndex];
+            newPlayerCell.classList.add('player');
+
+    // Actualizar visualmente la posición del objetivo (aldeano)
+    const currentGoalCell = grid.querySelector('.goal');
+    if (currentGoalCell) {
+        currentGoalCell.classList.remove('goal');
+    }
+    const newGoalCell = grid.children[goalIndex];
+    newGoalCell.classList.add('goal');
+        }
+
+        // Funcion para recargar pasos cuando se pase por una zona de recarga
+        function rechargeSteps() {
+            const playerRow = Math.floor(playerIndex / cols);
+            const playerCol = playerIndex % cols;
+            const playerCell = grid.children[playerIndex];
+            if (rechargePoints.some(point => point[0] === playerRow && point[1] === playerCol)) {
+                playerCell.classList.remove('recharge');
+                stepsRemaining = 15;
+                stepCounter.textContent = stepsRemaining;
+            }
+        }
+
+        // Intervalo que invoca y permite el movimiento del jugdor
+        let moveInterval = setInterval(() => {
+            movePlayer();
+            rechargeSteps();
+        }, 500);
+
+        // Funcion para resetear el nivel cuando se le de al boton
+        function resetLevel() {
+            level = 1;
+            counter.textContent = level;
+            resetGame();
+            stepsRemaining = 15; // Restablecer el contador de pasos
+            stepCounter.textContent = stepsRemaining; // Actualizar el contador de pasos en la interfaz
+            gameOverMessage.style.display = 'none'; // Ocultar el mensaje de Game Over
+            moveInterval = setInterval(() => {
+                movePlayer();
+                rechargeSteps();
+            }, 500); // Reiniciar el intervalo de movimiento
+        }
+
+        // Funcion para resetear el juego, reiniciar el nivel con todas la funciones de generacion
+        function resetGame() {
+            grid.innerHTML = '';
+            createGrid();
+            generateBlocks();
+            generateRechargePoints(); 
+            generateWeb(); 
+            generatePlayer();
+            generateGoal();
+        }
+
+        // Inicializacion del laberinto
+        generateBlocks();
+        generateRechargePoints(); 
+        generateWeb(); 
+        generatePlayer();
+        generateGoal();
+
+        // Evento click para controlar el reinicio del nivel
+        resetBtn.addEventListener('click', resetLevel);
+</script>
+
+
+<script>
+// Definir la representación genética
+const textureTypes = ['grass', 'sand', 'stone']; // Representación numérica: 0 -> césped, 1 -> arena, 2 -> piedra
+
+// Parámetros del algoritmo genético
+const populationSize = 10;
+const mutationRate = 0.1;
+
+// Inicialización de la población
+let population = [];
+
+function createRandomIndividual() {
+    let individual = [];
+    for (let i = 0; i < rows * cols; i++) {
+        individual.push(Math.floor(Math.random() * textureTypes.length));
+    }
+    return individual;
+}
+
+for (let i = 0; i < populationSize; i++) {
+    population.push(createRandomIndividual());
+}
+
+// Función de evaluación (Fitness)
+function calculateFitness(individual) {
+    let fitness = 0;
+    for (let i = 0; i < individual.length; i++) {
+        if (individual[i] === 0) { // Césped es el objetivo
+            fitness++;
+        }
+    }
+    return fitness / individual.length; // Fitness normalizado entre 0 y 1
+}
+
+// Función de selección (Torneo)
+function selection(population) {
+    let selected = [];
+    for (let i = 0; i < populationSize; i++) {
+        let a = population[Math.floor(Math.random() * populationSize)];
+        let b = population[Math.floor(Math.random() * populationSize)];
+        selected.push(calculateFitness(a) > calculateFitness(b) ? a : b);
+    }
+    return selected;
+}
+
+// Función de cruce (Crossover)
+function crossover(parentA, parentB) {
+    let pivot = Math.floor(Math.random() * parentA.length);
+    return parentA.slice(0, pivot).concat(parentB.slice(pivot));
+}
+
+// Función de mutación
+function mutate(individual) {
+    for (let i = 0; i < individual.length; i++) {
+        if (Math.random() < mutationRate) {
+            individual[i] = Math.floor(Math.random() * textureTypes.length);
+        }
+    }
+}
+
+// Algoritmo genético principal
+function geneticAlgorithm() {
+    let selected = selection(population);
+    let newPopulation = [];
+
+    for (let i = 0; i < populationSize; i += 2) {
+        let childA = crossover(selected[i], selected[i + 1]);
+        let childB = crossover(selected[i + 1], selected[i]);
+        mutate(childA);
+        mutate(childB);
+        newPopulation.push(childA);
+        newPopulation.push(childB);
+    }
+
+    population = newPopulation;
+}
+
+// Actualización gráfica del suelo
+function updateGround() {
+    const cells = document.querySelectorAll('.cell');
+
+    cells.forEach((cell, index) => {
+        // Verificar si la celda es un bloque o una telaraña
+        if (grid.children[index].classList.contains('block') || grid.children[index].classList.contains('web')) {
+            return; // Ignorar estas celdas
+        }
+
+        let textureIndex = population[0][index]; // Obtener el valor del primer individuo para esta celda
+        let texture = textureTypes[textureIndex]; // Obtener el tipo de textura basado en el índice
+
+        // Asignar la textura al fondo de la celda
+        switch (texture) {
+            case 'grass':
+                cell.style.backgroundImage = `url('img/pasto.jpg')`;
+                break;
+            case 'sand':
+                cell.style.backgroundImage = `url('img/arena.jpg')`;
+                break;
+            case 'stone':
+                cell.style.backgroundImage = `url('img/piedra.png')`;
+                break;
+            // Agrega más casos según sea necesario para otros tipos de texturas
+            default:
+                cell.style.backgroundImage = `url('img/pasto.jpg')`; // Textura predeterminada si no se encuentra
+        }
+
+        // Quitar clases previas 'player' y 'goal' de todas las celdas
+        cell.classList.remove('player', 'goal');
+
+        // Verificar y asignar imagen para el zombie (player)
+        if (index === playerIndex) {
+            cell.style.backgroundImage = `url('img/player.png')`; // Ruta de la imagen del zombie
+            cell.classList.add('player'); // Agregar clase 'player' a la celda del zombie
+        }
+
+        // Verificar y asignar imagen para el aldeano (goal)
+        if (index === goalIndex) {
+            cell.style.backgroundImage = `url('img/aldeano.png')`; // Ruta de la imagen del aldeano
+            cell.classList.add('goal'); // Agregar clase 'goal' a la celda del aldeano
+        }
+    });
+}
+
+// Intervalo para ejecutar el algoritmo genético y actualizar la visualización
+let geneticInterval = setInterval(() => {
+    geneticAlgorithm();
+    updateGround();
+}, 1000); // Ejecutar cada segundo (ajusta según necesidades de rendimiento)
+
+</script>
+</body>
+</html>
